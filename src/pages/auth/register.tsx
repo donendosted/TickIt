@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Address from "../../components/address";
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL;
+const BACKEND = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 export default function FollowUpForm() {
     const navigate = useNavigate();
@@ -13,7 +13,7 @@ export default function FollowUpForm() {
     const [name, setName] = useState("");
     const [loading, setLoading] = useState(false);
 
-    // called by <AptosConnect />
+    // called by <Address />
     const onWalletSuccess = (addr: string) => {
         setAddress(addr);
         setStep("email");
