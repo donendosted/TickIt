@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Address from "../../components/address";
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL;
+const BACKEND = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 export default function FollowUpForm() {
     const navigate = useNavigate();
@@ -12,13 +13,13 @@ export default function FollowUpForm() {
     const [name, setName] = useState("");
     const [loading, setLoading] = useState(false);
 
-    // called by <AptosConnect />
+    // called by <Address />
     const onWalletSuccess = (addr: string) => {
         setAddress(addr);
         setStep("email");
     };
 
-    const post = async (url: string, body: { address: string; email: string;  }) => {
+    const post = async (url: string, body: { address: string; email?: string; name?: string }) => {
         const res = await fetch(`${BACKEND}${url}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -54,7 +55,7 @@ export default function FollowUpForm() {
     return (
         <div className="max-w-md mx-auto mt-24 space-y-6">
             {step === "wallet" && (
-                <AptosConnect onSuccess={onWalletSuccess} />
+                <Address onSuccess={onWalletSuccess} />
             )}
 
             {step === "email" && (

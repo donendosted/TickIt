@@ -15,12 +15,14 @@ const Address = ({ onSuccess }: { onSuccess: (a: string) => void }) => {
 
             if (!account?.address) throw new Error("No address");
 
+            const addressString = account.address.toString();
+
             await axios.post(`${backend}/api/wallet/login`, {
-                address: account.address,
+                address: addressString,
             });
 
-            localStorage.setItem("address", account.address);
-            onSuccess(account.address);
+            localStorage.setItem("address", addressString);
+            onSuccess(addressString);
             toast.success("Wallet connected");
         } catch (e) {
             toast.error("Wallet connection failed");
