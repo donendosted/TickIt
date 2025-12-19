@@ -1,23 +1,13 @@
 import { AptosWalletAdapterProvider } from "@aptos-labs/wallet-adapter-react";
-import { PropsWithChildren } from "react";
-import { Network } from "@aptos-labs/ts-sdk";
+import { PetraWallet } from "petra-plugin-wallet-adapter";
+import {Outlet} from "react-router";
 
-export const WalletProvider = ({ children }: PropsWithChildren) => {
+const wallets = [new PetraWallet()];
 
+export default function App() {
     return (
-        <AptosWalletAdapterProvider
-            autoConnect={true}
-            dappConfig={{
-                network: Network.MAINNET,
-                aptosApiKeys: {
-                    mainnet: process.env.APTOS_API_KEY_MAINNET,
-                }
-            }}
-            onError={(error) => {
-                console.log("error", error);
-            }}
-        >
-            {children}
+        <AptosWalletAdapterProvider plugins={wallets} autoConnect={false}>
+            <Outlet />
         </AptosWalletAdapterProvider>
     );
-};
+}
