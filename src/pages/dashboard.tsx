@@ -4,6 +4,7 @@ import {
   Lock, Unlock, AlertCircle, Loader2
 } from "lucide-react";
 import axios from "axios";
+import { toast } from "sonner";
 
 const backend = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
@@ -573,6 +574,7 @@ export default function EventDashboard() {
       setJoinedEvents(response.data.data || response.data || []);
     } catch (err) {
       console.error("Error fetching my events:", err);
+      // Don't show error for my events as user might not be logged in
       setJoinedEvents([]); // Fallback to empty array
     }
   };
@@ -623,10 +625,10 @@ export default function EventDashboard() {
       setFormData(INITIAL_FORM_STATE);
       setFormErrors({});
       setSidebarOpen(false);
-      alert("Event created successfully!");
+      toast.success("Event created successfully!");
     } catch (err) {
       console.error("Error creating event:", err);
-      alert("Failed to create event. Please try again.");
+      toast.error("Failed to create event. Please try again.");
     } finally {
       setIsCreating(false);
     }
@@ -637,7 +639,7 @@ export default function EventDashboard() {
       prev.find(e => e.id === event.id) ? prev : [event, ...prev]
     );
     setSelectedEvent(null);
-    alert(`Successfully joined "${event.eventName}"!`);
+    toast.success(`Successfully joined "${event.eventName}"!`);
   };
 
   return (
