@@ -3,6 +3,9 @@ import {
   Plus, Calendar, Share2, X, Check, Ticket, DollarSign, 
   Lock, Unlock, AlertCircle, Loader2
 } from "lucide-react";
+import axios from "axios";
+
+const backend = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
 // Mock data for demo
 const MOCK_EVENTS = [
@@ -539,8 +542,46 @@ export default function EventDashboard() {
   const [isCreating, setIsCreating] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
-  const [events, setEvents] = useState(MOCK_EVENTS);
-  const [joinedEvents, setJoinedEvents] = useState([MOCK_EVENTS[1]]);
+  const [events, setEvents] = useState([]);
+  const [joinedEvents, setJoinedEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch all events from backend
+  const fetchEvents = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${backend}/api/events`);
+      setEvents(response.data.data || response.data || []);
+    } catch (err) {
+      console.error("Error fetching events:", err);
+      setError("Failed to load events. Please try again later.");
+      setEvents(MOCK_EVENTS); // Fallback to mock data
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch events the user has participated in
+  const fetchMyEvents = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${backend}/api/ticket/my`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setJoinedEvents(response.data.data || response.data || []);
+    } catch (err) {
+      console.error("Error fetching my events:", err);
+      setJoinedEvents([]); // Fallback to empty array
+    }
+  };
+
+  // Load events on component mount
+  useEffect(() => {
+    fetchEvents();
+    fetchMyEvents();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
@@ -564,22 +605,31 @@ export default function EventDashboard() {
     }
 
     setIsCreating(true);
-    // Simulate API call
-    setTimeout(() => {
-      const newEvent = {
-        id: String(events.length + 1),
-        ...formData,
-        date: formData.date,
-        soldSeats: 0,
-        hostAddress: "0xuser...",
-      };
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${backend}/api/events`,
+        formData,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
+      
+      // Add the new event to the list
+      const newEvent = response.data.data || response.data;
       setEvents((prev) => [newEvent, ...prev]);
+      
+      // Reset form and close sidebar
       setFormData(INITIAL_FORM_STATE);
       setFormErrors({});
       setSidebarOpen(false);
-      setIsCreating(false);
       alert("Event created successfully!");
-    }, 800);
+    } catch (err) {
+      console.error("Error creating event:", err);
+      alert("Failed to create event. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleJoinEvent = (event) => {
@@ -628,7 +678,10 @@ export default function EventDashboard() {
         {/* Tab Content */}
         {activeTab === "available" && (
           <div>
-            {events.length === 0 ? (
+            {error && <ErrorState message={error} />}
+            {isLoading ? (
+              <LoadingState />
+            ) : events.length === 0 ? (
               <EmptyState message="No events available yet. Be the first to create one!" />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
