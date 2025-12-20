@@ -1,24 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { 
   Plus, Calendar, Share2, X, Check, Ticket, DollarSign, 
-  Lock, Unlock, AlertCircle, Loader2, Copy, Download
+  Lock, Unlock, AlertCircle, Loader2, Copy, Download, Eye,
+  BarChart3, TrendingUp, Users, Upload, Image as ImageIcon
 } from "lucide-react";
 
-//const BACKEND_URL = "https://maniform-semiconventional-deon.ngrok-free.dev"; 
-
 const BACKEND_URL = "http://localhost:4000";
+
 // Constants
 const INITIAL_FORM_STATE = {
   eventName: "",
   eventDescription: "",
   mode: "virtual",
   date: "",
-  time: "",
+  time: "18:00",
   location: "",
-  ticketPrice: 0,
+  ticketPrice: "0",
   permission: "open",
-  imageUrl: "",
-  maxSeats: 1,
+  maxSeats: "1",
+  banner: null,
+  bannerPreview: null,
 };
 
 const MODES = ["virtual", "in-person"];
@@ -50,8 +51,6 @@ function validateEventForm(formData) {
 
   if (formData.time === "" || formData.time === null) {
     errors.time = "Time is required";
-  } else if (formData.time < 0 || formData.time > 23) {
-    errors.time = "Time must be between 0-23";
   }
 
   if (formData.maxSeats < 1) {
@@ -75,20 +74,21 @@ const formatDate = (dateString) => {
 };
 
 const formatTime = (timeString) => {
-  const timeNum = typeof timeString === 'string' && timeString.includes(':') 
-    ? parseInt(timeString.split(':')[0]) 
-    : Number(timeString);
+  if (!timeString) return "Invalid";
+  
+  const timeParts = timeString.includes(':') ? timeString.split(':') : [timeString];
+  const timeNum = parseInt(timeParts[0]);
   
   if (isNaN(timeNum)) return "Invalid";
   const period = timeNum >= 12 ? "PM" : "AM";
   const displayHour = timeNum === 0 ? 12 : timeNum > 12 ? timeNum - 12 : timeNum;
-  return `${displayHour}:00 ${period}`;
+  return `${displayHour}:${timeParts[1] || '00'} ${period}`;
 };
 
 const getAvailableSeats = (event) => (event.maxSeats || 0) - (event.soldSeats || 0);
 
 // Event Card Component
-function EventCard({ event, onClick, showQR = false }) {
+function EventCard({ event, onClick, isPurchased = false, isHosted = false }) {
   const availableSeats = getAvailableSeats(event);
   const isSoldOut = availableSeats <= 0;
 
@@ -99,9 +99,9 @@ function EventCard({ event, onClick, showQR = false }) {
     >
       {/* Image */}
       <div className="h-40 bg-gradient-to-br from-blue-900 to-slate-900 overflow-hidden flex-shrink-0">
-        {event.imageUrl ? (
+        {event.banner || event.imageUrl ? (
           <img
-            src={event.imageUrl}
+            src={event.banner || event.imageUrl}
             alt={event.eventName}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -142,7 +142,7 @@ function EventCard({ event, onClick, showQR = false }) {
         </div>
 
         {/* Seats */}
-        {!showQR && (
+        {!isPurchased && !isHosted && (
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <Ticket size={14} />
             <span className={isSoldOut ? "text-red-400 font-medium" : ""}>
@@ -160,16 +160,23 @@ function EventCard({ event, onClick, showQR = false }) {
         )}
 
         {/* Sold Out Badge */}
-        {isSoldOut && !showQR && (
+        {isSoldOut && !isPurchased && !isHosted && (
           <div className="bg-red-500/20 border border-red-500/50 rounded px-2 py-1 text-center mt-2">
             <span className="text-xs font-medium text-red-400">Sold Out</span>
           </div>
         )}
 
-        {/* Ticket Status Badge */}
-        {showQR && (
+        {/* Ticket Purchased Badge */}
+        {isPurchased && (
           <div className="bg-green-500/20 border border-green-500/50 rounded px-2 py-1 text-center mt-2">
             <span className="text-xs font-medium text-green-400">✓ Ticket Purchased</span>
+          </div>
+        )}
+
+        {/* Hosted Badge */}
+        {isHosted && (
+          <div className="bg-blue-500/20 border border-blue-500/50 rounded px-2 py-1 text-center mt-2">
+            <span className="text-xs font-medium text-blue-400">👤 You're Hosting</span>
           </div>
         )}
       </div>
@@ -218,10 +225,119 @@ function ErrorState({ message, onRetry }) {
   );
 }
 
-// Create Event Form Component
+// Create Event Form Component with File Upload
 function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors }) {
+  const fileInputRef = React.useRef(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onInputChange({
+          target: {
+            name: 'banner',
+            value: file,
+            type: 'file',
+          }
+        });
+        // Store preview separately
+        onInputChange({
+          target: {
+            name: 'bannerPreview',
+            value: reader.result,
+            type: 'text',
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveBanner = () => {
+    onInputChange({
+      target: {
+        name: 'banner',
+        value: null,
+        type: 'file',
+      }
+    });
+    onInputChange({
+      target: {
+        name: 'bannerPreview',
+        value: null,
+        type: 'text',
+      }
+    });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Banner Upload */}
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Event Banner Image
+        </label>
+        
+        {formData.bannerPreview ? (
+          <div className="relative group">
+            <img
+              src={formData.bannerPreview}
+              alt="Banner preview"
+              className="w-full h-32 object-cover rounded-lg border border-slate-700"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveBanner}
+              disabled={isLoading}
+              className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            className="w-full border-2 border-dashed border-slate-700 hover:border-slate-600 rounded-lg p-4 text-center transition disabled:opacity-50"
+          >
+            <Upload className="mx-auto mb-2 text-slate-400" size={24} />
+            <p className="text-sm text-slate-400">
+              Click to upload banner image
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              PNG, JPG, GIF up to 5MB
+            </p>
+          </button>
+        )}
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          disabled={isLoading}
+          className="hidden"
+        />
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-white mb-1">Event Name *</label>
         <input
@@ -255,7 +371,7 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-1">Mode</label>
+          <label className="block text-sm font-medium text-white mb-1">Mode *</label>
           <select
             name="mode"
             value={formData.mode}
@@ -272,7 +388,7 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-1">Location</label>
+          <label className="block text-sm font-medium text-white mb-1">Location *</label>
           <input
             name="location"
             value={formData.location}
@@ -301,17 +417,14 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-1">Time (0-23) *</label>
+          <label className="block text-sm font-medium text-white mb-1">Time (HH:MM) *</label>
           <input
-            type="number"
+            type="time"
             name="time"
             value={formData.time}
             onChange={onInputChange}
-            placeholder="0-23"
-            min="0"
-            max="23"
             disabled={isLoading}
-            className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-white placeholder-slate-500 disabled:opacity-50"
+            className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-white disabled:opacity-50"
           />
           {errors.time && (
             <p className="text-red-400 text-xs mt-1">{errors.time}</p>
@@ -321,7 +434,7 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-1">Ticket Price (APT)</label>
+          <label className="block text-sm font-medium text-white mb-1">Ticket Price (APT) *</label>
           <input
             type="number"
             name="ticketPrice"
@@ -373,18 +486,6 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
         </select>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-white mb-1">Image URL</label>
-        <input
-          name="imageUrl"
-          value={formData.imageUrl}
-          onChange={onInputChange}
-          placeholder="https://..."
-          disabled={isLoading}
-          className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-white placeholder-slate-500 disabled:opacity-50"
-        />
-      </div>
-
       <button
         onClick={onSubmit}
         disabled={isLoading}
@@ -406,12 +507,146 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
   );
 }
 
+// Analytics Modal Component
+function AnalyticsModal({ event, onClose }) {
+  if (!event) return null;
+
+  const availableSeats = getAvailableSeats(event);
+  const occupancyRate = ((event.soldSeats / event.maxSeats) * 100).toFixed(1);
+  const revenue = event.ticketPrice * event.soldSeats;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 border border-slate-800 text-white rounded-lg max-w-md w-full max-h-screen overflow-y-auto">
+        {/* Close button */}
+        <div className="flex justify-between items-center p-4 border-b border-slate-800">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <BarChart3 size={24} />
+            Analytics
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 rounded"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Event Title */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded p-4">
+            <h3 className="text-lg font-semibold text-white">
+              {event.eventName}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              {formatDate(event.date)} · {formatTime(event.time)}
+            </p>
+          </div>
+
+          {/* Tickets Sold */}
+          <div className="bg-blue-500/20 border border-blue-500/50 rounded p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-blue-300 mb-1">Tickets Sold</p>
+                <p className="text-3xl font-bold text-blue-400">
+                  {event.soldSeats}
+                </p>
+                <p className="text-xs text-blue-300 mt-1">
+                  out of {event.maxSeats} total
+                </p>
+              </div>
+              <Ticket className="text-blue-400" size={32} />
+            </div>
+          </div>
+
+          {/* Occupancy Rate */}
+          <div className="bg-emerald-500/20 border border-emerald-500/50 rounded p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-emerald-300 mb-1">Occupancy Rate</p>
+                <p className="text-3xl font-bold text-emerald-400">
+                  {occupancyRate}%
+                </p>
+                <p className="text-xs text-emerald-300 mt-1">
+                  {availableSeats} seats remaining
+                </p>
+              </div>
+              <TrendingUp className="text-emerald-400" size={32} />
+            </div>
+          </div>
+
+          {/* Revenue */}
+          <div className="bg-purple-500/20 border border-purple-500/50 rounded p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-purple-300 mb-1">Total Revenue</p>
+                <p className="text-3xl font-bold text-purple-400">
+                  {revenue.toFixed(2)} APT
+                </p>
+                <p className="text-xs text-purple-300 mt-1">
+                  @{event.ticketPrice} APT per ticket
+                </p>
+              </div>
+              <DollarSign className="text-purple-400" size={32} />
+            </div>
+          </div>
+
+          {/* Availability */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded p-4">
+            <p className="text-xs text-slate-400 mb-3">Seats Availability</p>
+            <div className="w-full bg-slate-700 rounded-full h-2">
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all"
+                style={{ width: `${occupancyRate}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-slate-400">
+              <span>0%</span>
+              <span>{occupancyRate}%</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          {/* Event Details */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400">Mode:</span>
+              <span className="text-white capitalize">{event.mode}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400">Permission:</span>
+              <span className="text-white capitalize">{event.permission}</span>
+            </div>
+            {event.location && event.location !== "null" && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Location:</span>
+                <span className="text-white">{event.location}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400">Created:</span>
+              <span className="text-white">{formatDate(event.createdAt)}</span>
+            </div>
+          </div>
+
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-md transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Ticket Details Modal Component
 function TicketDetailsModal({ ticket, onClose }) {
   if (!ticket) return null;
 
   const event = ticket.eventId;
-  const availableSeats = getAvailableSeats(event);
 
   const downloadQR = () => {
     const link = document.createElement('a');
@@ -452,16 +687,16 @@ function TicketDetailsModal({ ticket, onClose }) {
 
         <div className="p-4 space-y-4">
           {/* Event Image */}
-          {event.imageUrl && (
+          {event.banner || event.imageUrl ? (
             <img
-              src={event.imageUrl}
+              src={event.banner || event.imageUrl}
               alt={event.eventName}
               className="w-full h-48 object-cover rounded-lg"
               onError={(e) => {
                 e.target.style.display = "none";
               }}
             />
-          )}
+          ) : null}
 
           <p className="text-slate-300">{event.eventDescription}</p>
 
@@ -546,8 +781,8 @@ function TicketDetailsModal({ ticket, onClose }) {
   );
 }
 
-// Event Details Modal Component
-function EventDetailsModal({ event, onClose, onJoin, isJoining }) {
+// Event Details Modal Component (For Purchasing)
+function EventDetailsModal({ event, onClose, onPurchase, isPurchasing, isPurchased, onViewTicket }) {
   if (!event) return null;
 
   const availableSeats = getAvailableSeats(event);
@@ -586,9 +821,9 @@ function EventDetailsModal({ event, onClose, onJoin, isJoining }) {
         </div>
 
         <div className="p-4 space-y-4">
-          {event.imageUrl && (
+          {event.banner || event.imageUrl && (
             <img
-              src={event.imageUrl}
+              src={event.banner || event.imageUrl}
               alt={event.eventName}
               className="w-full h-48 object-cover rounded-lg"
               onError={(e) => {
@@ -625,23 +860,33 @@ function EventDetailsModal({ event, onClose, onJoin, isJoining }) {
           )}
 
           <div className="flex gap-2 pt-4">
-            <button
-              onClick={onJoin}
-              disabled={isSoldOut || isJoining}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-medium py-2 rounded-md transition flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isJoining ? (
-                <>
-                  <Loader2 className="animate-spin" size={16} />
-                  Joining...
-                </>
-              ) : (
-                <>
-                  <Ticket size={16} />
-                  {isSoldOut ? "Sold Out" : "Join Event"}
-                </>
-              )}
-            </button>
+            {isPurchased ? (
+              <button
+                onClick={onViewTicket}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-md transition flex items-center justify-center gap-2"
+              >
+                <Eye size={16} />
+                View Ticket
+              </button>
+            ) : (
+              <button
+                onClick={onPurchase}
+                disabled={isSoldOut || isPurchasing}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-medium py-2 rounded-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isPurchasing ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} />
+                    Purchasing...
+                  </>
+                ) : (
+                  <>
+                    <Ticket size={16} />
+                    {isSoldOut ? "Sold Out" : "Buy Ticket"}
+                  </>
+                )}
+              </button>
+            )}
             <button
               onClick={handleShare}
               className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-medium py-2 rounded-md transition flex items-center justify-center gap-2 border border-slate-700"
@@ -661,20 +906,22 @@ export default function EventDashboard() {
   const [activeTab, setActiveTab] = useState("available");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [analyticsEvent, setAnalyticsEvent] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [isJoining, setIsJoining] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [events, setEvents] = useState([]);
-  const [joinedTickets, setJoinedTickets] = useState([]);
+  const [purchasedTickets, setPurchasedTickets] = useState([]);
+  const [hostedEvents, setHostedEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState(null);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketsError, setTicketsError] = useState(null);
 
   const address = localStorage.getItem("address");
-  const token = localStorage.getItem("token"); // Assuming you store JWT token
+  const token = localStorage.getItem("token");
 
   // Fetch all events
   useEffect(() => {
@@ -690,6 +937,9 @@ export default function EventDashboard() {
       
       if (result.success && result.data) {
         setEvents(result.data);
+        // Filter hosted events
+        const hosted = result.data.filter(e => e.hostAddress?.toLowerCase() === address?.toLowerCase());
+        setHostedEvents(hosted);
       } else {
         setEventsError("Failed to load events");
       }
@@ -701,18 +951,18 @@ export default function EventDashboard() {
     }
   };
 
-  // Fetch joined tickets
+  // Fetch purchased tickets
   useEffect(() => {
     if (!address || !token) {
-      setJoinedTickets([]);
+      setPurchasedTickets([]);
       setTicketsLoading(false);
       return;
     }
     
-    fetchJoinedTickets();
+    fetchPurchasedTickets();
   }, [address, token]);
 
-  const fetchJoinedTickets = async () => {
+  const fetchPurchasedTickets = async () => {
     try {
       setTicketsLoading(true);
       setTicketsError(null);
@@ -727,7 +977,7 @@ export default function EventDashboard() {
       const result = await response.json();
       
       if (result.success && result.data) {
-        setJoinedTickets(result.data);
+        setPurchasedTickets(result.data);
       } else {
         setTicketsError("Failed to load tickets");
       }
@@ -741,10 +991,17 @@ export default function EventDashboard() {
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
+    
+    if (type === 'file') {
+      // File upload is handled separately
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "number" ? Number(value) : value,
+      [name]: value,
     }));
+
     if (formErrors[name]) {
       setFormErrors((prev) => ({
         ...prev,
@@ -767,24 +1024,43 @@ export default function EventDashboard() {
 
     setIsCreating(true);
     try {
+      // Create FormData object
+      const formDataToSend = new FormData();
+      formDataToSend.append("eventName", formData.eventName);
+      formDataToSend.append("eventDescription", formData.eventDescription);
+      formDataToSend.append("mode", formData.mode);
+      formDataToSend.append("date", formData.date);
+      formDataToSend.append("time", formData.time);
+      formDataToSend.append("location", formData.location);
+      formDataToSend.append("ticketPrice", formData.ticketPrice);
+      formDataToSend.append("permission", formData.permission);
+      formDataToSend.append("maxSeats", formData.maxSeats);
+      formDataToSend.append("eventBlockchainId", Date.now().toString());
+      
+      // Add banner file if present
+      if (formData.banner) {
+        formDataToSend.append("banner", formData.banner);
+      }
+
       const response = await fetch(`${BACKEND_URL}/api/events`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           ...(token && { 'Authorization': `Bearer ${token}` })
+          // Don't set Content-Type header, let browser set it with boundary
         },
-        body: JSON.stringify({
-          ...formData,
-          date: new Date(formData.date).toISOString(),
-          hostAddress: address,
-          eventBlockchainId: Date.now(),
-        }),
+        body: formDataToSend,
       });
 
       const result = await response.json();
 
       if (result.success || response.ok) {
-        setEvents((prev) => [result.data || result, ...prev]);
+        const newEvent = result.data || result;
+        setEvents((prev) => [newEvent, ...prev]);
+        
+        if (newEvent.hostAddress?.toLowerCase() === address?.toLowerCase()) {
+          setHostedEvents((prev) => [newEvent, ...prev]);
+        }
+        
         setFormData(INITIAL_FORM_STATE);
         setFormErrors({});
         setSidebarOpen(false);
@@ -800,42 +1076,50 @@ export default function EventDashboard() {
     }
   };
 
-  const handleJoinEvent = async (event) => {
+  const handlePurchaseTicket = async (event) => {
     if (!address) {
       alert("Please connect your wallet first");
       return;
     }
 
-    setIsJoining(true);
+    setIsPurchasing(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/tickets`, {
+      const response = await fetch(`${BACKEND_URL}/api/tickets/buy/${event._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: JSON.stringify({
-          eventId: event._id,
-          buyerAddress: address,
-          quantity: 1,
+          participantAddress: address,
         }),
       });
 
       const result = await response.json();
 
-      if (result.success || response.ok) {
+      if (result.success) {
         setSelectedEvent(null);
-        alert(`Successfully joined "${event.eventName}"!`);
-        fetchJoinedTickets(); // Refresh tickets
+        alert(`Successfully purchased ticket for "${event.eventName}"!`);
+        fetchPurchasedTickets();
       } else {
-        alert(result.message || "Failed to join event");
+        alert(result.message || "Failed to purchase ticket");
       }
     } catch (error) {
-      console.error("Failed to join event:", error);
-      alert(error.message || "Failed to join event. Please try again.");
+      console.error("Failed to purchase ticket:", error);
+      alert(error.message || "Failed to purchase ticket. Please try again.");
     } finally {
-      setIsJoining(false);
+      setIsPurchasing(false);
     }
+  };
+
+  // Check if event is already purchased
+  const isEventPurchased = (eventId) => {
+    return purchasedTickets.some(ticket => ticket.eventId._id === eventId || ticket.eventId === eventId);
+  };
+
+  // Get purchased ticket for an event
+  const getPurchasedTicket = (eventId) => {
+    return purchasedTickets.find(ticket => ticket.eventId._id === eventId || ticket.eventId === eventId);
   };
 
   return (
@@ -868,18 +1152,20 @@ export default function EventDashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Tab Navigation */}
-        <div className="flex gap-8 border-b border-slate-800 mb-8">
-          {["available", "joined"].map((tab) => (
+        <div className="flex gap-8 border-b border-slate-800 mb-8 overflow-x-auto">
+          {["available", "purchased", "hosted"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`pb-3 font-medium transition-colors ${
+              className={`pb-3 font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab
                   ? "text-blue-400 border-b-2 border-blue-400"
                   : "text-slate-400 hover:text-slate-300"
               }`}
             >
-              {tab === "available" ? "Available Events" : "My Tickets"}
+              {tab === "available" && "Available Events"}
+              {tab === "purchased" && "My Tickets"}
+              {tab === "hosted" && "Hosted Events"}
             </button>
           ))}
         </div>
@@ -899,7 +1185,7 @@ export default function EventDashboard() {
             )}
             {!eventsLoading && events.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
+                {events.filter(e => e.hostAddress?.toLowerCase() !== address?.toLowerCase()).map((event) => (
                   <EventCard
                     key={event._id}
                     event={event}
@@ -911,31 +1197,62 @@ export default function EventDashboard() {
           </div>
         )}
 
-        {activeTab === "joined" && (
+        {activeTab === "purchased" && (
           <div>
             {ticketsError && (
               <ErrorState 
                 message={`Failed to load tickets: ${ticketsError}`}
-                onRetry={fetchJoinedTickets}
+                onRetry={fetchPurchasedTickets}
               />
             )}
             {ticketsLoading && <LoadingState />}
-            {!ticketsLoading && joinedTickets.length === 0 && (
+            {!ticketsLoading && purchasedTickets.length === 0 && (
               <EmptyState message="You haven't purchased any tickets yet. Explore available events above!" />
             )}
-            {!ticketsLoading && joinedTickets.length > 0 && (
+            {!ticketsLoading && purchasedTickets.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {joinedTickets.map((ticket) => (
+                {purchasedTickets.map((ticket) => (
                   <div
                     key={ticket._id}
-                    onClick={() => setSelectedTicket(ticket)}
                     className="cursor-pointer"
                   >
                     <EventCard
                       event={ticket.eventId}
-                      showQR={true}
+                      isPurchased={true}
                       onClick={() => setSelectedTicket(ticket)}
                     />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "hosted" && (
+          <div>
+            {eventsLoading && <LoadingState />}
+            {!eventsLoading && hostedEvents.length === 0 && (
+              <EmptyState message="You haven't created any events yet. Click 'Create Event' to get started!" />
+            )}
+            {!eventsLoading && hostedEvents.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {hostedEvents.map((event) => (
+                  <div
+                    key={event._id}
+                    className="relative"
+                  >
+                    <EventCard
+                      event={event}
+                      isHosted={true}
+                      onClick={() => setAnalyticsEvent(event)}
+                    />
+                    <button
+                      onClick={() => setAnalyticsEvent(event)}
+                      className="absolute top-2 right-2 bg-slate-900/90 hover:bg-slate-800 text-white p-2 rounded-md transition"
+                      title="View Analytics"
+                    >
+                      <BarChart3 size={18} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -973,13 +1290,18 @@ export default function EventDashboard() {
         </>
       )}
 
-      {/* Event Details Modal */}
+      {/* Event Details Modal (For Purchasing) */}
       {selectedEvent && (
         <EventDetailsModal
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
-          onJoin={() => handleJoinEvent(selectedEvent)}
-          isJoining={isJoining}
+          onPurchase={() => handlePurchaseTicket(selectedEvent)}
+          isPurchasing={isPurchasing}
+          isPurchased={isEventPurchased(selectedEvent._id)}
+          onViewTicket={() => {
+            setSelectedEvent(null);
+            setSelectedTicket(getPurchasedTicket(selectedEvent._id));
+          }}
         />
       )}
 
@@ -988,6 +1310,14 @@ export default function EventDashboard() {
         <TicketDetailsModal
           ticket={selectedTicket}
           onClose={() => setSelectedTicket(null)}
+        />
+      )}
+
+      {/* Analytics Modal */}
+      {analyticsEvent && (
+        <AnalyticsModal
+          event={analyticsEvent}
+          onClose={() => setAnalyticsEvent(null)}
         />
       )}
     </div>
