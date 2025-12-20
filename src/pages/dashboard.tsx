@@ -6,7 +6,7 @@ import {
   Sparkles, Zap, Star, ChevronRight, Search, Filter
 } from "lucide-react";
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 
 const BACKEND_URL = "http://localhost:4000";
 
