@@ -45,6 +45,8 @@ const Address = ({ onSuccess }: { onSuccess: (a: string) => void }) => {
 
             if (!addr) {
                 window.open("https://petra.app", "_blank");
+                setLoading(false);
+                return;
             }
 
             await axios.post(`${backend}/api/wallet/login`, { address: addr }).then((res) => {
