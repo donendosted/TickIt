@@ -45,14 +45,16 @@ const Address = ({ onSuccess }: { onSuccess: (a: string) => void }) => {
 
             if (!addr) {
                 window.open("https://petra.app", "_blank");
+                setLoading(false);
+                return;
             }
 
-            await axios.post(`${backend}/api/wallet/login`, { address: addr! }).then((res) => {
+            await axios.post(`${backend}/api/wallet/login`, { address: addr }).then((res) => {
                 localStorage.setItem("token", res.data.data.token);
             });
 
-            localStorage.setItem("address", addr!);
-            onSuccess(addr!);
+            localStorage.setItem("address", addr);
+            onSuccess(addr);
             toast.success("Wallet connected");
         } catch (e) {
             toast.error("Wallet connection failed");

@@ -25,6 +25,7 @@ interface EventData {
   banner?: string;
   imageUrl?: string;
   hostAddress: string;
+  createdAt?: string;
 }
 
 interface FormData {
@@ -321,12 +322,13 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
 }
 
 // Enhanced Create Event Form
-function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors }: { 
+function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors, onFileChange }: { 
   formData: FormData; 
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void; 
   onSubmit: (e: React.FormEvent) => void; 
   isLoading: boolean; 
-  errors: FormErrors 
+  errors: FormErrors;
+  onFileChange: (file: File | null, preview: string | null) => void;
 }) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -345,20 +347,14 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        onInputChange({
-          target: { name: 'banner', value: file as any, type: 'file' }
-        } as any);
-        onInputChange({
-          target: { name: 'bannerPreview', value: reader.result as string, type: 'text' }
-        } as any);
+        onFileChange(file, reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveBanner = () => {
-    onInputChange({ target: { name: 'banner', value: null as any, type: 'file' } } as any);
-    onInputChange({ target: { name: 'bannerPreview', value: null as any, type: 'text' } } as any);
+    onFileChange(null, null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -578,7 +574,12 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
             <button
               key={value}
               type="button"
-              onClick={() => onInputChange({ target: { name: 'permission', value } } as any)}
+              onClick={() => {
+                const syntheticEvent = {
+                  target: { name: 'permission', value }
+                } as React.ChangeEvent<HTMLSelectElement>;
+                onInputChange(syntheticEvent);
+              }}
               disabled={isLoading}
               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
                 formData.permission === value
@@ -749,7 +750,7 @@ function AnalyticsModal({ event, onClose }: { event: EventData | null; onClose: 
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Created:</span>
-                <span className="text-white font-medium">{formatDate((event as any).createdAt)}</span>
+                <span className="text-white font-medium">{event.createdAt ? formatDate(event.createdAt) : 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -1151,6 +1152,14 @@ export default function EventDashboard() {
     }
   };
 
+  const handleFileChange = (file: File | null, preview: string | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      banner: file,
+      bannerPreview: preview,
+    }));
+  };
+
   const handleCreateEvent = async () => {
   if (!address) {
     alert("Please connect your wallet first");
@@ -1460,6 +1469,7 @@ export default function EventDashboard() {
                 onSubmit={handleCreateEvent}
                 isLoading={isCreating}
                 errors={formErrors}
+                onFileChange={handleFileChange}
               />
             </div>
           </div>
