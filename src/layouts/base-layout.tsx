@@ -7,7 +7,7 @@ const wallets = [new PetraWallet()];
 
 export default function App() {
     return (
-        <AptosWalletAdapterProvider plugins={wallets} autoConnect={false}>
+        <AptosWalletAdapterProvider optInWallets={wallets as any} autoConnect={false}>
             <Toaster />
             <Outlet />
         </AptosWalletAdapterProvider>

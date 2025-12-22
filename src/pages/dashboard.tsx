@@ -1,17 +1,52 @@
 import React, { useEffect, useState } from "react";
 import { 
-  Plus, Calendar, Share2, X, Check, Ticket, DollarSign, 
+  Plus, Calendar, Share2, X, Ticket, DollarSign, 
   Lock, Unlock, AlertCircle, Loader2, Copy, Download, Eye,
   BarChart3, TrendingUp, Users, Upload, MapPin, Clock,
-  Sparkles, Zap, Star, ChevronRight, Search, Filter
+  Sparkles, Zap, Star, ChevronRight
 } from "lucide-react";
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 
 const BACKEND_URL = "http://localhost:4000";
 
+// Type Definitions
+interface EventData {
+  _id: string;
+  eventName: string;
+  eventDescription: string;
+  mode: string;
+  date: string;
+  time: string;
+  location?: string;
+  ticketPrice: number;
+  permission: string;
+  maxSeats: number;
+  soldSeats: number;
+  banner?: string;
+  imageUrl?: string;
+  hostAddress: string;
+}
+
+interface FormData {
+  eventName: string;
+  eventDescription: string;
+  mode: string;
+  date: string;
+  time: string;
+  location: string;
+  ticketPrice: string;
+  permission: string;
+  maxSeats: string;
+  banner: File | null;
+  bannerPreview: string | null;
+}
+
+interface FormErrors {
+  [key: string]: string;
+}
+
 // Constants
-const INITIAL_FORM_STATE = {
+const INITIAL_FORM_STATE: FormData = {
   eventName: "",
   eventDescription: "",
   mode: "virtual",
@@ -32,8 +67,8 @@ const PERMISSIONS = [
 ];
 
 // Validation Helper
-function validateEventForm(formData) {
-  const errors = {};
+function validateEventForm(formData: FormData): FormErrors {
+  const errors: FormErrors = {};
 
   if (!formData.eventName?.trim()) {
     errors.eventName = "Event name is required";
@@ -56,11 +91,11 @@ function validateEventForm(formData) {
     errors.time = "Time is required";
   }
 
-  if (formData.maxSeats < 1) {
+  if (Number(formData.maxSeats) < 1) {
     errors.maxSeats = "At least 1 seat is required";
   }
 
-  if (formData.ticketPrice < 0) {
+  if (Number(formData.ticketPrice) < 0) {
     errors.ticketPrice = "Price cannot be negative";
   }
 
@@ -68,7 +103,7 @@ function validateEventForm(formData) {
 }
 
 // Utility Functions
-const formatDate = (dateString) => {
+const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -76,7 +111,7 @@ const formatDate = (dateString) => {
   });
 };
 
-const formatTime = (timeString) => {
+const formatTime = (timeString: string): string => {
   if (!timeString) return "Invalid";
   
   const timeParts = timeString.includes(':') ? timeString.split(':') : [timeString];
@@ -88,10 +123,10 @@ const formatTime = (timeString) => {
   return `${displayHour}:${timeParts[1] || '00'} ${period}`;
 };
 
-const getAvailableSeats = (event) => (event.maxSeats || 0) - (event.soldSeats || 0);
+const getAvailableSeats = (event: EventData): number => (event.maxSeats || 0) - (event.soldSeats || 0);
 
 // Enhanced Event Card Component with Modern Design
-function EventCard({ event, onClick, isPurchased = false, isHosted = false }) {
+function EventCard({ event, onClick, isPurchased = false, isHosted = false }: { event: EventData; onClick: () => void; isPurchased?: boolean; isHosted?: boolean }) {
   const availableSeats = getAvailableSeats(event);
   const isSoldOut = availableSeats <= 0;
   const occupancyRate = ((event.soldSeats / event.maxSeats) * 100).toFixed(0);
@@ -113,7 +148,8 @@ function EventCard({ event, onClick, isPurchased = false, isHosted = false }) {
               alt={event.eventName}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
               onError={(e) => {
-                e.target.style.display = "none";
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
@@ -199,7 +235,7 @@ function EventCard({ event, onClick, isPurchased = false, isHosted = false }) {
             <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  isSoldOut ? "bg-red-500" : occupancyRate > 80 ? "bg-yellow-500" : "bg-blue-500"
+                  isSoldOut ? "bg-red-500" : Number(occupancyRate) > 80 ? "bg-yellow-500" : "bg-blue-500"
                 }`}
                 style={{ width: `${occupancyRate}%` }}
               />
@@ -251,7 +287,7 @@ function LoadingState() {
 }
 
 // Enhanced Empty State
-function EmptyState({ message, icon: Icon = Calendar }) {
+function EmptyState({ message, icon: Icon = Calendar }: { message: string; icon?: React.ComponentType<any> }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="relative mb-6">
@@ -265,7 +301,7 @@ function EmptyState({ message, icon: Icon = Calendar }) {
 }
 
 // Modern Error State
-function ErrorState({ message, onRetry }) {
+function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <Alert className="bg-red-500/10 border-red-500/50">
       <AlertCircle className="h-4 w-4 text-red-400" />
@@ -285,11 +321,17 @@ function ErrorState({ message, onRetry }) {
 }
 
 // Enhanced Create Event Form
-function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors }) {
-  const fileInputRef = React.useRef(null);
+function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors }: { 
+  formData: FormData; 
+  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void; 
+  onSubmit: (e: React.FormEvent) => void; 
+  isLoading: boolean; 
+  errors: FormErrors 
+}) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
         alert('Please select an image file');
@@ -304,19 +346,19 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
       const reader = new FileReader();
       reader.onloadend = () => {
         onInputChange({
-          target: { name: 'banner', value: file, type: 'file' }
-        });
+          target: { name: 'banner', value: file as any, type: 'file' }
+        } as any);
         onInputChange({
-          target: { name: 'bannerPreview', value: reader.result, type: 'text' }
-        });
+          target: { name: 'bannerPreview', value: reader.result as string, type: 'text' }
+        } as any);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveBanner = () => {
-    onInputChange({ target: { name: 'banner', value: null, type: 'file' } });
-    onInputChange({ target: { name: 'bannerPreview', value: null, type: 'text' } });
+    onInputChange({ target: { name: 'banner', value: null as any, type: 'file' } } as any);
+    onInputChange({ target: { name: 'bannerPreview', value: null as any, type: 'text' } } as any);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -402,7 +444,7 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
           onChange={onInputChange}
           placeholder="Describe what makes your event special"
           disabled={isLoading}
-          rows="4"
+          rows={4}
           className="w-full bg-slate-800/50 border-2 border-slate-700 focus:border-blue-500 rounded-xl px-4 py-3 text-white placeholder-slate-500 transition-colors focus:outline-none resize-none"
         />
         {errors.eventDescription && (
@@ -536,7 +578,7 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
             <button
               key={value}
               type="button"
-              onClick={() => onInputChange({ target: { name: 'permission', value } })}
+              onClick={() => onInputChange({ target: { name: 'permission', value } } as any)}
               disabled={isLoading}
               className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
                 formData.permission === value
@@ -574,7 +616,7 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
 }
 
 // Analytics Modal with Enhanced Design
-function AnalyticsModal({ event, onClose }) {
+function AnalyticsModal({ event, onClose }: { event: EventData | null; onClose: () => void }) {
   if (!event) return null;
 
   const availableSeats = getAvailableSeats(event);
@@ -707,7 +749,7 @@ function AnalyticsModal({ event, onClose }) {
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Created:</span>
-                <span className="text-white font-medium">{formatDate(event.createdAt)}</span>
+                <span className="text-white font-medium">{formatDate((event as any).createdAt)}</span>
               </div>
             </div>
           </div>
@@ -718,10 +760,10 @@ function AnalyticsModal({ event, onClose }) {
 }
 
 // Ticket Details Modal
-function TicketDetailsModal({ ticket, onClose }) {
+function TicketDetailsModal({ ticket, onClose }: { ticket: any; onClose: () => void }) {
   if (!ticket) return null;
 
-  const event = ticket.eventId;
+  const event: EventData = ticket.eventId;
 
   const downloadQR = () => {
     const link = document.createElement('a');
@@ -767,7 +809,8 @@ function TicketDetailsModal({ ticket, onClose }) {
               alt={event.eventName}
               className="w-full h-56 object-cover rounded-xl"
               onError={(e) => {
-                e.target.style.display = "none";
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
               }}
             />
           ) : null}
@@ -859,7 +902,14 @@ function TicketDetailsModal({ ticket, onClose }) {
 }
 
 // Event Details Modal (For Purchasing)
-function EventDetailsModal({ event, onClose, onPurchase, isPurchasing, isPurchased, onViewTicket }) {
+function EventDetailsModal({ event, onClose, onPurchase, isPurchasing, isPurchased, onViewTicket }: {
+  event: EventData | null;
+  onClose: () => void;
+  onPurchase: () => void;
+  isPurchasing: boolean;
+  isPurchased: boolean;
+  onViewTicket: () => void;
+}) {
   if (!event) return null;
 
   const availableSeats = getAvailableSeats(event);
@@ -897,16 +947,17 @@ function EventDetailsModal({ event, onClose, onPurchase, isPurchasing, isPurchas
         </div>
 
         <div className="p-6 space-y-6">
-          {event.banner || event.imageUrl && (
+          {event.banner || event.imageUrl ? (
             <img
               src={event.banner || event.imageUrl}
               alt={event.eventName}
               className="w-full h-56 object-cover rounded-xl"
               onError={(e) => {
-                e.target.style.display = "none";
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
               }}
             />
-          )}
+          ) : null}
 
           <p className="text-slate-300 leading-relaxed">{event.eventDescription}</p>
 
@@ -982,21 +1033,21 @@ function EventDetailsModal({ event, onClose, onPurchase, isPurchasing, isPurchas
 // Main Component
 export default function EventDashboard() {
   const [activeTab, setActiveTab] = useState("available");
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [analyticsEvent, setAnalyticsEvent] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [analyticsEvent, setAnalyticsEvent] = useState<EventData | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
-  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
-  const [events, setEvents] = useState([]);
-  const [purchasedTickets, setPurchasedTickets] = useState([]);
-  const [hostedEvents, setHostedEvents] = useState([]);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_STATE);
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [purchasedTickets, setPurchasedTickets] = useState<any[]>([]);
+  const [hostedEvents, setHostedEvents] = useState<EventData[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [eventsError, setEventsError] = useState(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   const [ticketsLoading, setTicketsLoading] = useState(true);
-  const [ticketsError, setTicketsError] = useState(null);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
 
   const address = localStorage.getItem("address");
   const token = localStorage.getItem("token");
@@ -1016,7 +1067,7 @@ export default function EventDashboard() {
       if (result.success && result.data) {
         setEvents(result.data);
         // Normalize addresses before comparison
-      const normalizeAddress = (addr) => {
+      const normalizeAddress = (addr: string | undefined): string => {
         if (!addr) return '';
         let normalized = addr.trim();
         // Remove surrounding quotes
@@ -1026,16 +1077,16 @@ export default function EventDashboard() {
         return normalized;
       };
 
-      const hosted = result.data.filter(e => 
-        normalizeAddress(e.hostAddress) === normalizeAddress(address)
+      const hosted = result.data.filter((e: EventData) => 
+        normalizeAddress(e.hostAddress) === normalizeAddress(address || '')
       );
 
         setHostedEvents(hosted);
       } else {
         setEventsError("Failed to load events");
       }
-    } catch (error) {
-      setEventsError(error.message || "Failed to load events");
+    } catch (error: any) {
+      setEventsError(error?.message || "Failed to load events");
       console.error("Failed to fetch events:", error);
     } finally {
       setEventsLoading(false);
@@ -1072,15 +1123,15 @@ export default function EventDashboard() {
       } else {
         setTicketsError("Failed to load tickets");
       }
-    } catch (error) {
-      setTicketsError(error.message || "Failed to load tickets");
+    } catch (error: any) {
+      setTicketsError(error?.message || "Failed to load tickets");
       console.error("Failed to fetch tickets:", error);
     } finally {
       setTicketsLoading(false);
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
     if (type === 'file') {
@@ -1193,7 +1244,7 @@ export default function EventDashboard() {
 };
 
 
-  const handlePurchaseTicket = async (event) => {
+  const handlePurchaseTicket = async (event: EventData) => {
     if (!address) {
       alert("Please connect your wallet first");
       return;
@@ -1221,20 +1272,20 @@ export default function EventDashboard() {
       } else {
         alert(result.message || "Failed to purchase ticket");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to purchase ticket:", error);
-      alert(error.message || "Failed to purchase ticket. Please try again.");
+      alert(error?.message || "Failed to purchase ticket. Please try again.");
     } finally {
       setIsPurchasing(false);
     }
   };
 
-  const isEventPurchased = (eventId) => {
-    return purchasedTickets.some(ticket => ticket.eventId._id === eventId || ticket.eventId === eventId);
+  const isEventPurchased = (eventId: string): boolean => {
+    return purchasedTickets.some(ticket => ticket.eventId?._id === eventId || ticket.eventId === eventId);
   };
 
-  const getPurchasedTicket = (eventId) => {
-    return purchasedTickets.find(ticket => ticket.eventId._id === eventId || ticket.eventId === eventId);
+  const getPurchasedTicket = (eventId: string): any => {
+    return purchasedTickets.find(ticket => ticket.eventId?._id === eventId || ticket.eventId === eventId);
   };
 
   return (
