@@ -9,7 +9,7 @@ import {
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Warp } from '@paper-design/shaders-react';
+import { Warp, NeuroNoise } from '@paper-design/shaders-react';
 
 const BACKEND_URL = import.meta.env.VITE_PUBLIC_BACKEND_URL;
 
@@ -36,7 +36,7 @@ const PERMISSIONS = [
 
 // Validation Helper
 function validateEventForm(formData) {
-  const errors: any = {};
+  const errors = {};
 
   if (!formData.eventName?.trim()) {
     errors.eventName = "Event name is required";
@@ -102,10 +102,22 @@ function EventCard({ event, onClick, isPurchased = false, isHosted = false }) {
   return (
     <div
       onClick={onClick}
-      className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border border-slate-700/50 hover:border-blue-500/50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10 rounded-2xl overflow-hidden"
+      className="group relative border border-slate-700/50 hover:border-blue-500/50 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10 rounded-2xl overflow-hidden"
     >
-      
-      {/* Gradient Overlay */}
+        <NeuroNoise
+            width="100%"
+            height="100%"
+            className={`absolute inset-0 -z-1 opacity-95`}
+            colorFront="#ffffff"
+            colorMid="#47a6ff"
+            colorBack="#000000"
+            brightness={0.17}
+            contrast={0.35}
+            speed={0.16} //random
+            scale={0.4} //random
+        />
+
+        {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       
       {/* Image with Overlay */}
@@ -117,7 +129,7 @@ function EventCard({ event, onClick, isPurchased = false, isHosted = false }) {
               alt={event.eventName}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
               onError={(e) => {
-                (e.target as HTMLElement).style.display = "none";
+                e.target.style.display = "none";
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/50 to-transparent" />
@@ -203,7 +215,7 @@ function EventCard({ event, onClick, isPurchased = false, isHosted = false }) {
             <div className="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  isSoldOut ? "bg-red-500" : Number(occupancyRate) > 80 ? "bg-yellow-500" : "bg-blue-500"
+                  isSoldOut ? "bg-red-500" : occupancyRate > 80 ? "bg-yellow-500" : "bg-blue-500"
                 }`}
                 style={{ width: `${occupancyRate}%` }}
               />
@@ -492,7 +504,7 @@ function CreateEventForm({ formData, onInputChange, onSubmit, isLoading, errors 
           onChange={onInputChange}
           placeholder="Describe what makes your event special"
           disabled={isLoading}
-          rows={4}
+          rows="4"
           className="w-full bg-slate-800/50 border-2 border-slate-700 focus:border-blue-500 rounded-xl px-4 py-3 text-white placeholder-slate-500 transition-colors focus:outline-none resize-none"
         />
         {errors.eventDescription && (
@@ -857,7 +869,7 @@ function TicketDetailsModal({ ticket, onClose }) {
               alt={event.eventName}
               className="w-full h-56 object-cover rounded-xl"
               onError={(e) => {
-                (e.target as HTMLElement).style.display = "none";
+                e.target.style.display = "none";
               }}
             />
           ) : null}
@@ -993,7 +1005,7 @@ function EventDetailsModal({ event, onClose, onPurchase, isPurchasing, isPurchas
               alt={event.eventName}
               className="w-full h-56 object-cover rounded-xl"
               onError={(e) => {
-                (e.target as HTMLElement).style.display = "none";
+                e.target.style.display = "none";
               }}
             />
           )}
