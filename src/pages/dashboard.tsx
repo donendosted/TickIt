@@ -1349,75 +1349,75 @@ export default function EventDashboard() {
     <div className="min-h-screen overflow-hidden relative text-white">
       
 
-<Warp className="absolute inset-0 -z-10"
-  width="100%"
-  height="100%"
-  colors={["#14120f", "#d2a76a", "#dfc5a9", "#0b0b0b"]}
-  proportion={0.24}
-  softness={1}
-  distortion={0.21}
-  swirl={0.57}
-  swirlIterations={10}
-  shape="edge"
-  shapeScale={0.75}
-  speed={4.2}
-  scale={2}
-/>
+        <Warp className="absolute inset-0 -z-10"
+          width="100%"
+          height="100%"
+          colors={["#14120f", "#d2a76a", "#dfc5a9", "#0b0b0b"]}
+          proportion={0.24}
+          softness={1}
+          distortion={0.21}
+          swirl={0.57}
+          swirlIterations={10}
+          shape="edge"
+          shapeScale={0.75}
+          speed={4.2}
+          scale={2}
+        />
 
       {/* Enhanced Navbar */}
       <nav className="border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-40 shadow-lg shadow-black/10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-2 rounded-xl">
-              {/* <Ticket size={24} /> */}
-            </div>
-            <h1 className="text-3xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          <div className="flex items-center gap-1">
+              <img src="/favicon.png" className={`w-16`} alt={`logo`}/>
+            <h1 className="text-3xl font-black bg-slate-300 bg-clip-text text-transparent select-none">
               Tick it
             </h1>
           </div>
           {address ? (
             <div className="flex items-center gap-4">
-              <div className="bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2">
+              <div className="bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 select-none">
                 <span className="text-sm text-slate-300 font-mono">
                   {address.slice(0, 6)}...{address.slice(-4)}
                 </span>
               </div>
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-2.5 px-5 rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
+                className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 px-5 rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
               >
                 <Plus size={20} />
                 Create Event
               </button>
+
+                <button
+                    onClick={async () => {
+                        try {
+
+
+                            // 2️⃣ Remove auth data
+                            localStorage.removeItem("token");
+                            localStorage.removeItem("address");
+
+                            toast.success("Logged out successfully");
+
+                            // optional redirect / state reset
+                            navigate("/", { replace: true });
+                        } catch (err) {
+                            console.error("Logout failed:", err);
+                            toast.error("Logout failed");
+                        }
+                    }}
+                    className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition shadow-lg shadow-red-500/20 hover:shadow-red-500/40"
+                >
+                    <LogOut size={16} className="inline mr-2" />
+                    Logout
+                </button>
             </div>
           ) : (
             <div className="text-sm text-slate-400 bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2">
               Connect wallet to create events
             </div>
           )}
-          <button
-            onClick={async () => {
-              try {
-              
 
-                // 2️⃣ Remove auth data
-                localStorage.removeItem("token");
-                localStorage.removeItem("address");
-
-                toast.success("Logged out successfully");
-
-                // optional redirect / state reset
-                navigate("/", { replace: true });
-              } catch (err) {
-                console.error("Logout failed:", err);
-                toast.error("Logout failed");
-              }
-            }}
-            className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold transition"
-          >
-            <LogOut size={16} className="inline mr-2" />
-            Logout
-          </button>
         </div>
       </nav>
 
@@ -1435,7 +1435,7 @@ export default function EventDashboard() {
               onClick={() => setActiveTab(key)}
               className={`flex items-center gap-2 px-6 py-3 font-semibold transition-all duration-300 whitespace-nowrap rounded-lg ${
                 activeTab === key
-                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/20"
+                  ? "bg-[#a68353] text-white shadow-lg shadow-blue-500/20"
                   : "text-slate-400 hover:text-slate-300 hover:bg-slate-800/50"
               }`}
             >
